@@ -12,8 +12,8 @@
     restorecon -v /usr/bin/flightctl-agent
 
 Name:           flightctl
-Version:        0.4.0
-Release:        1%{?dist}
+Version:        0.6.0~main~3~g5349a77
+Release:        1.20250318151323117700.flightctl.login.3.g5349a77%{?dist}
 Summary:        Flight Control service
 
 %gometa
@@ -21,7 +21,7 @@ Summary:        Flight Control service
 License:        Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND ISC AND MIT
 URL:            %{gourl}
 
-Source0:        1%{?dist}
+Source0:        flightctl-0.6.0~main~3~g5349a77.tar.gz
 
 BuildRequires:  golang
 BuildRequires:  make
@@ -64,7 +64,7 @@ The flightctl-selinux package provides the SELinux policy modules required by th
 
 %prep
 %goprep -A
-%setup -q %{forgesetupargs}
+%setup -q %{forgesetupargs} -n flightctl-0.6.0~main~3~g5349a77
 
 %build
     # if this is a buggy version of go we need to set GOPROXY as workaround
@@ -165,6 +165,11 @@ fi
 %{_datadir}/selinux/packages/%{selinuxtype}/flightctl_agent.pp.bz2
 
 %changelog
+
+* Tue Mar 18 2025 Super User - 0.6.0~main~3~g5349a77-1.20250318151323117700.flightctl.login.3.g5349a77
+- EDM-1251: fix JSONB fields in CompositeSelectorResolver (#995) (Assaf Albo)
+- EDM-1138: Upgrade go to RH-supported (and FIPS-compatible) version (#980) (Gregory Shilin)
+- EDM-1039: Make CLI code Windows compatible (#951) (Gregory Shilin)
 
 * Fri Feb 7 2025 Miguel Angel Ajo <majopela@redhat.com> - 0.4.0-1
 - Add selinux support for console pty access

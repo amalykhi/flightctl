@@ -55,6 +55,31 @@ var _ = Describe("cli operation", func() {
 		})
 	})
 
+	Context("login validation", func() {
+		BeforeEach(func() {
+			harness = e2e.NewTestHarness()
+		})
+		It("Validations works when login to flightctl cli", Label("78748"), func() {
+
+			By("Get Login Arguments and token")
+			loginArgs := []string{"login", "https://not-existing.lab.redhat.com"}
+
+			By("login using a wrong url  without --insecure-skip-tls-verify flag")
+			_, err := harness.CLI(loginArgs...)
+			Expect(err).To(ContainSubstring("failed to get auth info"))
+
+			By("login using a wrong url")
+			loginArgs = append(loginArgs, "--insecure-skip-tls-verify")
+			_, err = harness.CLI(loginArgs...)
+			Expect(err).To(ContainSubstring("failed to get auth info"))
+
+			By("login using a wrong url without --insecure-skip-tls-verify flag")
+			loginArgs = []string{"login", "${API_ENDPOINT}", "--insecure-skip-tls-verify", "--token", "fake-token"}
+			_, err = harness.CLI(loginArgs...)
+			Expect(err).To(ContainSubstring("the token provided is invalid or expired"))
+		})
+	})
+
 	Context("apply/recursive", func() {
 		It("should work for a complete set of yamls", func() {
 			out, err := harness.CLI("apply", "-R", "-f", util.GetTestExamplesYamlPath("/"))
