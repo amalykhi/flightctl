@@ -3,7 +3,6 @@ module github.com/flightctl/flightctl
 go 1.22
 
 require (
-	github.com/RangelReale/osincli v0.0.0-20160924135400-fababb0555f2
 	github.com/ccoveille/go-safecast v1.1.0
 	github.com/containers/image/v5 v5.30.1
 	github.com/containers/storage v1.53.0
@@ -14,7 +13,6 @@ require (
 	github.com/evanphx/json-patch v5.9.0+incompatible
 	github.com/getkin/kin-openapi v0.124.0
 	github.com/gliderlabs/ssh v0.3.8
-	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-git/go-billy/v5 v5.6.0
 	github.com/go-git/go-git/v5 v5.13.0
@@ -34,6 +32,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.34.1
 	github.com/openshift/library-go v0.0.0-20231130204458-653f82d961a1
+	github.com/openshift/osincli v0.0.0-20160924135400-fababb0555f2
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/prometheus/client_golang v1.19.0
 	github.com/redis/go-redis/v9 v9.7.0
