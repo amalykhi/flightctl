@@ -17,7 +17,7 @@ import (
 	"github.com/flightctl/flightctl/internal/auth/common"
 	"github.com/flightctl/flightctl/internal/crypto"
 	"github.com/flightctl/flightctl/pkg/reqid"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5/middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -188,15 +188,15 @@ func NewDefault() *Config {
 }
 
 // NewFromConfig returns a new Flight Control API client from the given config.
-func NewFromConfig(config *Config) (*client.ClientWithResponses, error) {
+func NewFromConfig(config *Config, configFilePath string) (*client.ClientWithResponses, error) {
 
 	httpClient, err := NewHTTPClientFromConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("NewFromConfig: creating HTTP client %w", err)
 	}
 	ref := client.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
-		req.Header.Set(middleware.RequestIDHeader, reqid.GetReqID())
-		accessToken := GetAccessToken(config)
+		req.Header.Set(middleware.RequestIDHeader, reqid.NextRequestID())
+		accessToken := GetAccessToken(config, configFilePath)
 		if accessToken != "" {
 			req.Header.Set(common.AuthHeader, fmt.Sprintf("Bearer %s", accessToken))
 		}
@@ -355,7 +355,7 @@ func NewFromConfigFile(filename string) (*client.ClientWithResponses, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewFromConfig(config)
+	return NewFromConfig(config, filename)
 }
 
 // NewFromConfigFile returns a new Flight Control API client using the config read from the given file.
