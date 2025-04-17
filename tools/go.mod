@@ -10,8 +10,8 @@ require (
 	google.golang.org/protobuf v1.33.0
 	gotest.tools/gotestsum v1.12.0
 )
-
 require (
+	github.com/apenella/go-ansible/v2 v2.2.0 // indirect
 	github.com/bitfield/gotestdox v0.2.2 // indirect
 	github.com/dnephin/pflag v1.0.7 // indirect
 	github.com/fatih/color v1.16.0 // indirect
@@ -29,6 +29,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
+	github.com/tidwall/gjson v1.15.0 // indirect
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
