@@ -13,6 +13,7 @@ import (
 	"github.com/flightctl/flightctl/api/v1alpha1"
 	"github.com/flightctl/flightctl/internal/agent/client"
 	"github.com/flightctl/flightctl/internal/agent/device/applications/provider"
+	"github.com/flightctl/flightctl/internal/agent/device/dependency"
 	"github.com/flightctl/flightctl/internal/agent/device/fileio"
 	"github.com/flightctl/flightctl/pkg/executer"
 	"github.com/flightctl/flightctl/pkg/log"
@@ -206,7 +207,7 @@ func TestListenForEvents(t *testing.T) {
 			inspectBytes, err := json.Marshal(testInspect)
 			require.NoError(err)
 
-			podman := client.NewPodman(log, execMock, rw, util.NewBackoff())
+			podman := client.NewPodman(log, execMock, rw, util.NewPollConfig())
 			podmanMonitor := NewPodmanMonitor(log, podman, "", rw)
 
 			// add test apps to the monitor
@@ -353,7 +354,7 @@ func TestApplicationAddRemove(t *testing.T) {
 			readWriter.SetRootdir(tmpDir)
 			execMock := executer.NewMockExecuter(ctrl)
 
-			podman := client.NewPodman(log, execMock, readWriter, util.NewBackoff())
+			podman := client.NewPodman(log, execMock, readWriter, util.NewPollConfig())
 			podmanMonitor := NewPodmanMonitor(log, podman, "", readWriter)
 			testApp := createTestApplication(require, tc.appName, v1alpha1.ApplicationStatusPreparing)
 
@@ -463,6 +464,10 @@ func (m *mockProvider) Spec() *provider.ApplicationSpec {
 		Name:   m.name,
 		Volume: volManager,
 	}
+}
+
+func (m *mockProvider) OCITargets(pullSecret *client.PullSecret) ([]dependency.OCIPullTarget, error) {
+	return nil, nil
 }
 
 func (m *mockProvider) Verify(ctx context.Context) error {
