@@ -3,17 +3,11 @@ package quadlets_test
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/flightctl/flightctl/test/harness/e2e"
 	testutil "github.com/flightctl/flightctl/test/util"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-)
-
-const (
-	defaultEventuallyTimeout         = 5 * time.Minute
-	defaultEventuallyPollingInterval = 250 * time.Millisecond
 )
 
 // Quadlet tests require a RHEL device with FlightCtl deployed via quadlets
@@ -66,6 +60,6 @@ var _ = AfterEach(func() {
 })
 
 func init() {
-	SetDefaultEventuallyTimeout(defaultEventuallyTimeout)
-	SetDefaultEventuallyPollingInterval(defaultEventuallyPollingInterval)
+	SetDefaultEventuallyTimeout(testutil.DURATION_TIMEOUT)
+	SetDefaultEventuallyPollingInterval(testutil.EVENTUALLY_POLLING_250)
 }
