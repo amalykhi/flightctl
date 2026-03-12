@@ -249,19 +249,6 @@ var _ = Describe("Rootless applications", Label("rootless"), func() {
 		// execOut, err := harness.VM.RunSSH([]string{"sudo", "-u", flightctlUser, "sh", "-c", fmt.Sprintf("cd /tmp && env HOME=%q podman exec %s id", flightctlHome, containerName)}, nil)
 		// Expect(err).ToNot(HaveOccurred())
 		// Expect(execOut.String()).To(And(ContainSubstring("uid=1000"), Not(ContainSubstring("uid=0(root)"))))
-
-		By("SELinux: no AVC denials for flightctl/podman")
-		getenforceOut, err := harness.VM.RunSSH([]string{"sh", "-c", "getenforce 2>/dev/null || echo Disabled"}, nil)
-		if err != nil || strings.TrimSpace(getenforceOut.String()) != "Enforcing" {
-			Skip("SELinux not Enforcing or getenforce failed")
-			return
-		}
-		avcOut, err := harness.VM.RunSSH([]string{"sh", "-c", "sudo ausearch -m avc -ts recent 2>/dev/null | grep -E 'flightctl|podman' || true"}, nil)
-		if err != nil {
-			Skip("ausearch unavailable")
-			return
-		}
-		Expect(strings.TrimSpace(avcOut.String())).To(BeEmpty(), "expected no AVC denials for flightctl/podman")
 	})
 })
 

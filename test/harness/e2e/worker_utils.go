@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 )
 
@@ -117,7 +116,6 @@ func GetWorkerContext() context.Context {
 // Use this in your test suite's BeforeSuite if you want a simple setup.
 func GinkgoBeforeSuite() {
 	var _ = ginkgo.BeforeSuite(func() {
-		_, _, err := SetupWorkerHarness()
-		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		SetupWorkerHarnessOrAbort()
 	})
 }
