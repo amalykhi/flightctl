@@ -15,6 +15,7 @@ import (
 
 	"github.com/flightctl/flightctl/api/core/v1beta1"
 	agentcfg "github.com/flightctl/flightctl/internal/agent/config"
+	"github.com/flightctl/flightctl/test/util"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/yaml"
@@ -188,6 +189,42 @@ func (h *Harness) VMCommandOutputFunc(command string, trim bool) func() string {
 		}
 		return output
 	}
+}
+
+// GetFlightctlAgentJournal returns flightctl-agent journal text from the primary VM via ReadPrimaryVMAgentLogs.
+// tailLines is reserved for API compatibility and ignored (journal scope matches ReadPrimaryVMAgentLogs("", FLIGHTCTL_AGENT_SERVICE)).
+func (h *Harness) GetFlightctlAgentJournal(tailLines int) (string, error) {
+	_ = tailLines
+	if h == nil {
+		return "", fmt.Errorf("harness is nil")
+	}
+	return h.ReadPrimaryVMAgentLogs("", util.FLIGHTCTL_AGENT_SERVICE)
+}
+
+// WaitForAgentJournalUntil polls until pred returns true on agent logs from ReadPrimaryVMAgentLogs (same path as other e2e tests).
+// tailLines is reserved for API compatibility and ignored.
+// Use pred to combine several acceptable substrings or conditions so tests stay stable across agent wording/locale/deployments.
+// timeout and polling are Ginkgo duration strings (see TIMEOUT, POLLING in this package).
+func (h *Harness) WaitForAgentJournalUntil(description string, tailLines int, timeout, polling string, pred func(string) bool) {
+	Expect(h).ToNot(BeNil())
+	Expect(pred).ToNot(BeNil())
+	_ = tailLines
+	GinkgoWriter.Printf("WaitForAgentJournalUntil: %s (ReadPrimaryVMAgentLogs)\n", description)
+	Eventually(func(g Gomega) string {
+		logs, err := h.ReadPrimaryVMAgentLogs("", util.FLIGHTCTL_AGENT_SERVICE)
+		g.Expect(err).NotTo(HaveOccurred())
+		return logs
+	}, timeout, polling).Should(Satisfy(pred), description)
+}
+
+// WaitForAgentJournalToContain polls until the flightctl-agent journal text from ReadPrimaryVMAgentLogs contains substring.
+// tailLines is reserved for API compatibility and ignored (same as WaitForAgentJournalUntil / GetFlightctlAgentJournal).
+// Prefer WaitForAgentJournalUntil when a single phrase is too brittle across environments.
+func (h *Harness) WaitForAgentJournalToContain(description, substring string, tailLines int, timeout, polling string) {
+	Expect(strings.TrimSpace(substring)).ToNot(BeEmpty())
+	h.WaitForAgentJournalUntil(description, tailLines, timeout, polling, func(log string) bool {
+		return strings.Contains(log, substring)
+	})
 }
 
 // WaitForPodmanImagePresence waits until a podman image is present/absent on the VM.

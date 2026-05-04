@@ -58,7 +58,7 @@ var _ = Describe("Rootless applications", Label("rootless"), func() {
 		deviceID, _ = harness.EnrollAndWaitForOnlineStatus()
 	})
 
-	It("covers all rootless checkpoints across quadlet, container, and compose app types", Label("sanity", "87844"), func() {
+	It("covers all rootless checkpoints across quadlet, container, and compose app types", Label("sanity", "agent", "rootless", "87844"), func() {
 		var names string
 		var err error
 
@@ -301,13 +301,25 @@ var _ = Describe("Rootless applications", Label("rootless"), func() {
 		Expect(denied).To(BeEmpty(), "expected no AVC denials for flightctl/podman")
 	})
 
-	It("validates rootless workload execution: non-existent user, no home, privileged port, invalid username, no linger, empty runAs, duplicate name", Label("87846"), func() {
+	It("validates rootless workload execution: non-existent user, no home, privileged port, invalid username, no linger, empty runAs, duplicate name", Label("agent", "rootless", "87846"), func() {
 		clearAndWaitUpToDate := func() {
 			Expect(harness.UpdateDeviceWithRetries(deviceID, func(d *v1beta1.Device) {
 				d.Spec.Applications = &[]v1beta1.ApplicationProviderSpec{}
 			})).ToNot(HaveOccurred())
 			harness.WaitForDeviceContents(deviceID, "device UpToDate after clear", func(device *v1beta1.Device) bool {
 				return device.Status.Updated.Status == v1beta1.DeviceUpdatedStatusUpToDate
+			}, testutil.LONGTIMEOUT)
+		}
+		waitForUpdateErrorWithMessage := func(description string, msgPred func(string) bool) {
+			harness.WaitForDeviceContents(deviceID, description, func(device *v1beta1.Device) bool {
+				if device == nil || device.Status == nil {
+					return false
+				}
+				cond := v1beta1.FindStatusCondition(device.Status.Conditions, v1beta1.ConditionTypeDeviceUpdating)
+				if cond == nil || cond.Status != v1beta1.ConditionStatusFalse || cond.Reason != string(v1beta1.UpdateStateError) {
+					return false
+				}
+				return msgPred(cond.Message)
 			}, testutil.LONGTIMEOUT)
 		}
 
@@ -317,14 +329,12 @@ var _ = Describe("Rootless applications", Label("rootless"), func() {
 		Expect(harness.UpdateDeviceWithRetries(deviceID, func(d *v1beta1.Device) {
 			d.Spec.Applications = &[]v1beta1.ApplicationProviderSpec{specNonexistent}
 		})).ToNot(HaveOccurred())
-		harness.WaitForDeviceContents(deviceID, "device shows update failure for non-existent user", func(device *v1beta1.Device) bool {
-			return e2e.ConditionExists(device, v1beta1.ConditionTypeDeviceUpdating, v1beta1.ConditionStatusFalse, string(v1beta1.UpdateStateError))
-		}, testutil.LONGTIMEOUT)
-		device, err := harness.GetDevice(deviceID)
-		Expect(err).ToNot(HaveOccurred())
-		cond := v1beta1.FindStatusCondition(device.Status.Conditions, v1beta1.ConditionTypeDeviceUpdating)
-		Expect(cond).ToNot(BeNil())
-		Expect(cond.Message).To(Or(ContainSubstring("user"), ContainSubstring("prefetch"), ContainSubstring("exist")))
+		waitForUpdateErrorWithMessage(
+			"device shows update failure for non-existent user",
+			func(msg string) bool {
+				return strings.Contains(msg, "user") || strings.Contains(msg, "prefetch") || strings.Contains(msg, "exist")
+			},
+		)
 		clearAndWaitUpToDate()
 
 		By("Verify agent fails when user exists but has no home directory")
@@ -338,21 +348,17 @@ var _ = Describe("Rootless applications", Label("rootless"), func() {
 		Expect(harness.UpdateDeviceWithRetries(deviceID, func(d *v1beta1.Device) {
 			d.Spec.Applications = &[]v1beta1.ApplicationProviderSpec{specNoHome}
 		})).ToNot(HaveOccurred())
-		harness.WaitForDeviceContents(deviceID, "device shows error for user without home", func(device *v1beta1.Device) bool {
-			return e2e.ConditionExists(device, v1beta1.ConditionTypeDeviceUpdating, v1beta1.ConditionStatusFalse, string(v1beta1.UpdateStateError))
-		}, testutil.LONGTIMEOUT)
-		device, err = harness.GetDevice(deviceID)
-		Expect(err).ToNot(HaveOccurred())
-		cond = v1beta1.FindStatusCondition(device.Status.Conditions, v1beta1.ConditionTypeDeviceUpdating)
-		Expect(cond).ToNot(BeNil())
 		// Agent may report the failure during prefetch (generic "prefetch failed...internal error")
 		// or with a specific message mentioning home directory.
-		Expect(cond.Message).To(Or(
-			ContainSubstring("home"),
-			ContainSubstring("Home"),
-			And(ContainSubstring("prefetch"), ContainSubstring("internal error")),
-			And(ContainSubstring("prefetch"), ContainSubstring("precondition")),
-		))
+		waitForUpdateErrorWithMessage(
+			"device shows error for user without home",
+			func(msg string) bool {
+				return strings.Contains(msg, "home") ||
+					strings.Contains(msg, "Home") ||
+					(strings.Contains(msg, "prefetch") && strings.Contains(msg, "internal error")) ||
+					(strings.Contains(msg, "prefetch") && strings.Contains(msg, "precondition"))
+			},
+		)
 		clearAndWaitUpToDate()
 
 		By("Verify rootless apps cannot bind to privileged ports")
@@ -360,35 +366,48 @@ var _ = Describe("Rootless applications", Label("rootless"), func() {
 		specPrivPort, err := e2e.NewQuadletInlineSpec(rootlessAppOCP87846PrivPort, flightctlUser, []string{"nginx.container"}, []string{privPortContent})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(harness.SetDeviceApplications(deviceID, &[]v1beta1.ApplicationProviderSpec{specPrivPort})).ToNot(HaveOccurred())
+		// Single checkpoint is enough: app status is sourced from device status, so a second manual scan of Status.Applications is redundant.
 		Expect(harness.WaitForApplicationStatus(deviceID, rootlessAppOCP87846PrivPort, v1beta1.ApplicationStatusError, testutil.LONG_TIMEOUT, testutil.POLLING)).ToNot(HaveOccurred())
-		device, err = harness.GetDevice(deviceID)
-		Expect(err).ToNot(HaveOccurred())
-		var appStatus string
-		for i := range device.Status.Applications {
-			if device.Status.Applications[i].Name == rootlessAppOCP87846PrivPort {
-				appStatus = string(device.Status.Applications[i].Status)
-				break
-			}
-		}
-		Expect(appStatus).To(Equal(string(v1beta1.ApplicationStatusError)))
 		clearAndWaitUpToDate()
 
-		By("Try to create spec with invalid username")
-		getResp, err := harness.Client.GetDeviceWithResponse(harness.Context, deviceID)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(getResp.JSON200).ToNot(BeNil())
-		devInvalidUser := *getResp.JSON200
+		By("Invalid username in runAs: API accepts the spec; agent fails user lookup during prefetch (OutOfDate + error detail)")
 		invalidUserSpec, err := e2e.NewQuadletInlineSpec(rootlessAppOCP87846PrivPort, "user@invalid!", []string{"app.container"}, []string{rootlessAlpineContainerContent(rootlessAlpineImage)})
 		Expect(err).ToNot(HaveOccurred())
-		devInvalidUser.Spec.Applications = &[]v1beta1.ApplicationProviderSpec{invalidUserSpec}
-		replaceResp, err := harness.Client.ReplaceDeviceWithResponse(harness.Context, deviceID, devInvalidUser)
-		Expect(err).ToNot(HaveOccurred())
-		// API may reject invalid username with 400 (Bad Request) or 409 (Conflict).
-		Expect(replaceResp.StatusCode()).To(Or(Equal(400), Equal(409)), "invalid username should be rejected with 400 or 409")
-		if replaceResp.StatusCode() == 400 {
-			Expect(string(replaceResp.Body)).To(Or(ContainSubstring("invalid"), ContainSubstring("username"), ContainSubstring("runAs")))
-		}
-		// 409 returns a generic conflict message ("object has been modified"), not validation text
+		// Use UpdateDeviceWithRetries: a bare ReplaceDevice races the controller/agent (stale resourceVersion → 409).
+		Expect(harness.UpdateDeviceWithRetries(deviceID, func(d *v1beta1.Device) {
+			d.Spec.Applications = &[]v1beta1.ApplicationProviderSpec{invalidUserSpec}
+		})).ToNot(HaveOccurred())
+
+		// Single check: wait until status shows OutOfDate with the same user-facing detail the test expects (no second assert of the same fields).
+		harness.WaitForDeviceContents(deviceID, "invalid runAs: OutOfDate with updated.info describing prefetch/prepare failure", func(device *v1beta1.Device) bool {
+			if device == nil || device.Status == nil || device.Status.Updated.Info == nil {
+				return false
+			}
+			if device.Status.Updated.Status != v1beta1.DeviceUpdatedStatusOutOfDate {
+				return false
+			}
+			info := *device.Status.Updated.Info
+			if !strings.Contains(info, "not been updated") {
+				return false
+			}
+			return strings.Contains(info, "internal error") ||
+				strings.Contains(info, "unknown user")
+		}, testutil.LONGTIMEOUT)
+		// Single predicate checkpoint: spec literal + any failure cue from prefetch/podman/user lookup (exact phrases differ by OS/agent build).
+		harness.WaitForAgentJournalUntil(
+			"agent journal: invalid runAs + prefetch/podman user resolution failure",
+			0,
+			testutil.LONGTIMEOUT,
+			e2e.POLLING,
+			func(log string) bool {
+				if !strings.Contains(log, "user@invalid!") {
+					return false
+				}
+				return strings.Contains(log, "failed to lookup") ||
+					strings.Contains(log, "user: unknown user")
+			},
+		)
+		clearAndWaitUpToDate()
 
 		By("Verify behavior when user does not have lingering enabled")
 		_, err = harness.VM.RunSSH([]string{"sudo", "useradd", "--create-home", userNoLinger87846}, nil)
@@ -430,7 +449,7 @@ var _ = Describe("Rootless applications", Label("rootless"), func() {
 		clearAndWaitUpToDate()
 
 		By("Validate that flightctl prevents duplicate application names (rootful and rootless same name)")
-		getResp, err = harness.Client.GetDeviceWithResponse(harness.Context, deviceID)
+		getResp, err := harness.Client.GetDeviceWithResponse(harness.Context, deviceID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(getResp.JSON200).ToNot(BeNil())
 		devDup := *getResp.JSON200
@@ -439,7 +458,7 @@ var _ = Describe("Rootless applications", Label("rootless"), func() {
 		specRootless, err := e2e.NewQuadletInlineSpec(rootlessAppOCP87846SameName, flightctlUser, []string{"app.container"}, []string{rootlessAlpineContainerContent(rootlessAlpineImage)})
 		Expect(err).ToNot(HaveOccurred())
 		devDup.Spec.Applications = &[]v1beta1.ApplicationProviderSpec{specRootful, specRootless}
-		replaceResp, err = harness.Client.ReplaceDeviceWithResponse(harness.Context, deviceID, devDup)
+		replaceResp, err := harness.Client.ReplaceDeviceWithResponse(harness.Context, deviceID, devDup)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(replaceResp.StatusCode()).To(Equal(400), "duplicate application name should be rejected with 400")
 		Expect(string(replaceResp.Body)).To(ContainSubstring("duplicate"))
