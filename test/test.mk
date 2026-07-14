@@ -118,7 +118,7 @@ deploy-e2e-extras: bin/.ssh/id_rsa.pub bin/e2e-certs/ca.pem
 	test/scripts/deploy_e2e_extras_with_helm.sh
 
 deploy-e2e-ocp-test-vm:
-	sudo --preserve-env=VM_DISK_SIZE_INC test/scripts/create_vm_libvirt.sh ${KUBECONFIG_PATH}
+	sudo --preserve-env=VM_DISK_SIZE_INC --preserve-env=NETWORK_NAME test/scripts/create_vm_libvirt.sh ${KUBECONFIG_PATH}
 
 deploy-quadlets-vm:
 	sudo --preserve-env=VM_DISK_SIZE_INC --preserve-env=USER --preserve-env=REDHAT_USER --preserve-env=REDHAT_PASSWORD --preserve-env=GIT_VERSION --preserve-env=BREW_BUILD_URL test/scripts/deploy_quadlets_rhel.sh
