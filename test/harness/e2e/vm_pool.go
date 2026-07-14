@@ -262,12 +262,20 @@ func (p *VMPool) createVMForWorker(workerID int) (vm.TestVMInterface, error) {
 // reaches a terminal state. It returns nil when the service completed
 // successfully or is not installed, and an error if the service failed,
 // timed out, or could not be queried.
+// SSH errors (exit 255 / connection refused) are treated as transient — the
+// VM may be mid-reboot as part of a greenboot retry cycle — and are retried
+// within the overall deadline rather than causing an immediate failure.
 func waitForGreenbootHealthcheck(testVM vm.TestVMInterface) error {
 	deadline := time.Now().Add(greenbootTimeout)
 	for time.Now().Before(deadline) {
 		stdout, err := testVM.RunSSH([]string{"systemctl", "show", "-p", "ActiveState", "--value", "greenboot-healthcheck.service"}, nil)
 		if err != nil {
-			return fmt.Errorf("failed to query greenboot-healthcheck ActiveState: %w", err)
+			// SSH connection failure (exit 255) means the VM is unreachable —
+			// likely rebooting as part of greenboot's retry cycle. Treat as
+			// transient and keep polling until the deadline.
+			fmt.Printf("⚠️  [greenboot] SSH unreachable (VM may be rebooting): %v — retrying\n", err)
+			time.Sleep(greenbootPollInterval)
+			continue
 		}
 		state := strings.TrimSpace(stdout.String())
 		if state == "activating" || state == "reloading" {
@@ -281,7 +289,9 @@ func waitForGreenbootHealthcheck(testVM vm.TestVMInterface) error {
 
 		resultOut, err := testVM.RunSSH([]string{"systemctl", "show", "-p", "Result", "--value", "greenboot-healthcheck.service"}, nil)
 		if err != nil {
-			return fmt.Errorf("failed to query greenboot-healthcheck Result: %w", err)
+			fmt.Printf("⚠️  [greenboot] SSH unreachable querying Result (VM may be rebooting): %v — retrying\n", err)
+			time.Sleep(greenbootPollInterval)
+			continue
 		}
 		result := strings.TrimSpace(resultOut.String())
 		if result == "success" || result == "" {
