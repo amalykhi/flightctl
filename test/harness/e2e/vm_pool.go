@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	greenbootTimeout      = 2 * time.Minute
+	greenbootTimeout      = 4 * time.Minute
 	greenbootPollInterval = 1 * time.Second
 )
 
