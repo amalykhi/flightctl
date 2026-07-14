@@ -42,10 +42,11 @@ if [[ -n "${API_ENDPOINT:-}" ]]; then
             LOGIN_EXIT=$?
             set -e
             if [[ "${LOGIN_EXIT}" -ne 0 ]]; then
-                echo "⚠️  [Startup] Warning: Could not login to API at ${API_ENDPOINT} with PAM user '${PAM_USER}'"
+                echo "❌ [Startup] Error: Could not login to API at ${API_ENDPOINT} with PAM user '${PAM_USER}'"
                 echo "    Login error output:"
                 echo "${LOGIN_OUTPUT}" | sed 's/^/    /'
-                echo "    Tests may fail if CLI is not configured."
+                echo "    Cannot continue without CLI configuration — aborting."
+                exit 1
             else
                 echo "✅ [Startup] CLI login successful with PAM user '${PAM_USER}'"
             fi
