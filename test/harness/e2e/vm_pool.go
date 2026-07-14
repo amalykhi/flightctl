@@ -222,11 +222,14 @@ func (p *VMPool) createVMForWorker(workerID int) (vm.TestVMInterface, error) {
 
 	fmt.Printf("🔄 [VMPool] Worker %d: Creating pristine snapshot\n", workerID)
 
-	// Wait for greenboot-healthcheck to finish while the agent is still running.
-	// If the agent is stopped before the healthcheck completes, the snapshot may
-	// capture a pending reboot.
+	// Wait for greenboot-healthcheck to reach a terminal state while the agent is
+	// still running. This prevents the snapshot from capturing a mid-reboot state.
+	// A "failed" result is tolerated here: on a pristine VM with no enrollment
+	// config the agent cannot connect to any server, so the health check will
+	// always fail. The snapshot is intentionally taken before enrollment, so
+	// greenboot failure at this point is expected and harmless.
 	if err := waitForGreenbootHealthcheck(newVM); err != nil {
-		return nil, fmt.Errorf("greenboot-healthcheck failed before snapshot: %w", err)
+		fmt.Printf("⚠️  [VMPool] Worker %d: greenboot-healthcheck did not pass before snapshot (expected on unenrolled VM): %v\n", workerID, err)
 	}
 
 	// Stop the agent before cleaning files to ensure it's not writing to /var/lib/flightctl
