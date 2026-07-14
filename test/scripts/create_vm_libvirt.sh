@@ -11,7 +11,7 @@ VM_NAME="test-vm"
 VM_RAM=${VM_RAM:-24576}                 # RAM in MB necessary to run the flightctl e2e
 VM_CPUS=${VM_CPUS:-12}                  # Number of CPUs
 VM_DISK_SIZE_INC=${VM_DISK_SIZE_INC:-30} # Disk size increment
-NETWORK_NAME="$(get_ocp_nodes_network)"   # Network name
+NETWORK_NAME="${NETWORK_NAME:-$(get_ocp_nodes_network)}"
 NETWORK_NAME=${NETWORK_NAME:-flightctl-net}
 DEFAULT_NETWORK_NAME="default"
 echo "ocp_network name is: ${NETWORK_NAME}"

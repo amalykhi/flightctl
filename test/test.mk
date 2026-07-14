@@ -131,7 +131,7 @@ deploy-e2e-extras:
 
 deploy-e2e-ocp-test-vm: VM_DISK_SIZE_INC := $(or $(VM_DISK_SIZE_INC),50)
 deploy-e2e-ocp-test-vm:
-	sudo VM_DISK_SIZE_INC=$(VM_DISK_SIZE_INC) IPV6_ONLY=$(IPV6_ONLY) --preserve-env=VM_DISK_SIZE_INC --preserve-env=IPV6_ONLY test/scripts/create_vm_libvirt.sh $(KUBECONFIG_PATH)
+	sudo VM_DISK_SIZE_INC=$(VM_DISK_SIZE_INC) IPV6_ONLY=$(IPV6_ONLY) --preserve-env=VM_DISK_SIZE_INC --preserve-env=IPV6_ONLY --preserve-env=NETWORK_NAME test/scripts/create_vm_libvirt.sh $(KUBECONFIG_PATH)
 
 deploy-quadlets-vm:
 	sudo --preserve-env=VM_DISK_SIZE_INC --preserve-env=USER --preserve-env=REDHAT_USER --preserve-env=REDHAT_PASSWORD --preserve-env=GIT_VERSION --preserve-env=BREW_BUILD_URL test/scripts/deploy_quadlets_rhel.sh
